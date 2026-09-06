@@ -269,7 +269,6 @@ def obter_access_token():
 # ============================================================
 # BUSCAR PRODUTOS NO MERCADO LIVRE
 # ============================================================
-
 def buscar_produtos_mercado_livre(query, limit=20):
 
     access_token = obter_access_token()
@@ -284,16 +283,25 @@ def buscar_produtos_mercado_livre(query, limit=20):
         "limit": limit
     }
 
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/json"
+    }
+
     resposta = requests.get(
         url,
         params=parametros,
+        headers=headers,
         timeout=30
     )
 
     if resposta.status_code != 200:
         raise Exception(
             f"Erro na busca do Mercado Livre: "
-            f"{resposta.status_code} - {resposta.text}"
+            f"HTTP {resposta.status_code}\n"
+            f"URL: {resposta.url}\n"
+            f"Resposta: {resposta.text}\n"
+            f"Headers: {dict(resposta.headers)}"
         )
 
     return resposta.json()
