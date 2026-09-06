@@ -297,7 +297,121 @@ def buscar_produtos_mercado_livre(query, limit=20):
         )
 
     return resposta.json()
+# ============================================================
+# DIAGNÓSTICO DA APLICAÇÃO MERCADO LIVRE
+# ============================================================
 
+@app.route("/diagnostico-app")
+def diagnostico_app():
+
+    try:
+
+        access_token = obter_access_token()
+
+        if not access_token:
+            return """
+            <h1>❌ Access Token não disponível</h1>
+            """, 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        # ====================================================
+        # CONSULTAR APLICAÇÃO
+        # ====================================================
+
+        app_response = requests.get(
+
+            "https://api.mercadolibre.com/applications/7411717385543362",
+
+            headers=headers,
+
+            timeout=30
+        )
+
+        # ====================================================
+        # CONSULTAR GRANTS
+        # ====================================================
+
+        grants_response = requests.get(
+
+            "https://api.mercadolibre.com/applications/7411717385543362/grants",
+
+            headers=headers,
+
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+
+        <html>
+
+        <head>
+            <meta charset="UTF-8">
+
+            <title>
+                Diagnóstico TOMA DESCONTO
+            </title>
+        </head>
+
+        <body style="
+            font-family: Arial;
+            background: #f5f5f5;
+            padding: 30px;
+        ">
+
+            <h1>🔥 TOMA DESCONTO!</h1>
+
+            <h2>🔎 Diagnóstico da aplicação</h2>
+
+            <hr>
+
+            <h3>📱 Aplicação</h3>
+
+            <p>
+                Status HTTP:
+                <strong>
+                    {app_response.status_code}
+                </strong>
+            </p>
+
+            <pre style="
+                background: white;
+                padding: 20px;
+                overflow-x: auto;
+            ">{app_response.text}</pre>
+
+            <hr>
+
+            <h3>🔐 Grants / Permissões</h3>
+
+            <p>
+                Status HTTP:
+                <strong>
+                    {grants_response.status_code}
+                </strong>
+            </p>
+
+            <pre style="
+                background: white;
+                padding: 20px;
+                overflow-x: auto;
+            ">{grants_response.text}</pre>
+
+        </body>
+
+        </html>
+        """
+
+    except Exception as e:
+
+        return f"""
+        <h1>❌ Erro no diagnóstico</h1>
+
+        <pre>{str(e)}</pre>
+        """, 500
 # ============================================================
 # HOME
 # ============================================================
