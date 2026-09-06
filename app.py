@@ -1,4 +1,4 @@
-import os
+﻿import os
 import secrets
 import hashlib
 import base64
@@ -10,7 +10,7 @@ from flask import Flask, redirect, request, make_response
 app = Flask(__name__)
 
 # ============================================================
-# CONFIGURAÇÕES
+# CONFIGURAÃ‡Ã•ES
 # ============================================================
 
 MELI_CLIENT_ID = os.getenv("MELI_CLIENT_ID")
@@ -28,7 +28,7 @@ TOKEN_URL = "https://api.mercadolibre.com/oauth/token"
 
 def conectar_banco():
     if not DATABASE_URL:
-        raise Exception("DATABASE_URL não configurada.")
+        raise Exception("DATABASE_URL nÃ£o configurada.")
 
     return psycopg2.connect(DATABASE_URL)
 
@@ -214,7 +214,7 @@ def renovar_access_token():
 
     if not novo_refresh_token:
         print(
-            "ERRO: Mercado Livre não enviou novo refresh token."
+            "ERRO: Mercado Livre nÃ£o enviou novo refresh token."
         )
         return None
 
@@ -237,7 +237,7 @@ def renovar_access_token():
 
 
 # ============================================================
-# OBTER ACCESS TOKEN VÁLIDO
+# OBTER ACCESS TOKEN VÃLIDO
 # ============================================================
 
 def obter_access_token():
@@ -258,7 +258,7 @@ def obter_access_token():
     if agora >= expires_at - 300:
 
         print(
-            "Access Token próximo do vencimento."
+            "Access Token prÃ³ximo do vencimento."
         )
 
         return renovar_access_token()
@@ -274,7 +274,7 @@ def buscar_produtos_mercado_livre(query, limit=20):
     access_token = obter_access_token()
 
     if not access_token:
-        raise Exception("Não foi possível obter um Access Token válido.")
+        raise Exception("NÃ£o foi possÃ­vel obter um Access Token vÃ¡lido.")
 
     url = "https://api.mercadolibre.com/sites/MLB/search"
 
@@ -306,7 +306,7 @@ def buscar_produtos_mercado_livre(query, limit=20):
 
     return resposta.json()
 # ============================================================
-# DIAGNÓSTICO DA APLICAÇÃO MERCADO LIVRE
+# DIAGNÃ“STICO DA APLICAÃ‡ÃƒO MERCADO LIVRE
 # ============================================================
 
 @app.route("/diagnostico-app")
@@ -318,7 +318,7 @@ def diagnostico_app():
 
         if not access_token:
             return """
-            <h1>❌ Access Token não disponível</h1>
+            <h1>âŒ Access Token nÃ£o disponÃ­vel</h1>
             """, 500
 
         headers = {
@@ -326,7 +326,7 @@ def diagnostico_app():
         }
 
         # ====================================================
-        # CONSULTAR APLICAÇÃO
+        # CONSULTAR APLICAÃ‡ÃƒO
         # ====================================================
 
         app_response = requests.get(
@@ -360,7 +360,7 @@ def diagnostico_app():
             <meta charset="UTF-8">
 
             <title>
-                Diagnóstico TOMA DESCONTO
+                DiagnÃ³stico TOMA DESCONTO
             </title>
         </head>
 
@@ -370,13 +370,13 @@ def diagnostico_app():
             padding: 30px;
         ">
 
-            <h1>🔥 TOMA DESCONTO!</h1>
+            <h1>ðŸ”¥ TOMA DESCONTO!</h1>
 
-            <h2>🔎 Diagnóstico da aplicação</h2>
+            <h2>ðŸ”Ž DiagnÃ³stico da aplicaÃ§Ã£o</h2>
 
             <hr>
 
-            <h3>📱 Aplicação</h3>
+            <h3>ðŸ“± AplicaÃ§Ã£o</h3>
 
             <p>
                 Status HTTP:
@@ -393,7 +393,7 @@ def diagnostico_app():
 
             <hr>
 
-            <h3>🔐 Grants / Permissões</h3>
+            <h3>ðŸ” Grants / PermissÃµes</h3>
 
             <p>
                 Status HTTP:
@@ -416,7 +416,7 @@ def diagnostico_app():
     except Exception as e:
 
         return f"""
-        <h1>❌ Erro no diagnóstico</h1>
+        <h1>âŒ Erro no diagnÃ³stico</h1>
 
         <pre>{str(e)}</pre>
         """, 500
@@ -445,9 +445,9 @@ def home():
         background: #f5f5f5;
     ">
 
-        <h1>🔥 TOMA DESCONTO!</h1>
+        <h1>ðŸ”¥ TOMA DESCONTO!</h1>
 
-        <h2>🤖 Sistema de Ofertas</h2>
+        <h2>ðŸ¤– Sistema de Ofertas</h2>
 
         <p>Servidor online.</p>
 
@@ -461,7 +461,7 @@ def home():
                 cursor: pointer;
             ">
 
-                🛒 Conectar Mercado Livre
+                ðŸ›’ Conectar Mercado Livre
 
             </button>
 
@@ -477,7 +477,7 @@ def home():
                 cursor: pointer;
             ">
 
-                🔎 Ver status
+                ðŸ”Ž Ver status
 
             </button>
 
@@ -498,7 +498,7 @@ def teste_token():
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>❌ Access Token não disponível</h1>", 500
+            return "<h1>âŒ Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}"
@@ -511,20 +511,20 @@ def teste_token():
         )
 
         return f"""
-        <h1>🔎 TESTE DO ACCESS TOKEN</h1>
+        <h1>ðŸ”Ž TESTE DO ACCESS TOKEN</h1>
         <h2>Status HTTP: {resposta.status_code}</h2>
         <pre>{resposta.text}</pre>
         """
 
     except Exception as e:
-        return f"<h1>❌ Erro</h1><pre>{str(e)}</pre>", 500
+        return f"<h1>âŒ Erro</h1><pre>{str(e)}</pre>", 500
 @app.route("/teste-busca")
 def teste_busca():
     try:
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>❌ Access Token não disponível</h1>", 500
+            return "<h1>âŒ Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}"
@@ -541,7 +541,7 @@ def teste_busca():
         )
 
         return f"""
-        <h1>🔎 TESTE DE BUSCA</h1>
+        <h1>ðŸ”Ž TESTE DE BUSCA</h1>
 
         <h2>Status HTTP: {resposta.status_code}</h2>
 
@@ -552,7 +552,7 @@ def teste_busca():
 
     except Exception as e:
         return f"""
-        <h1>❌ Erro no teste</h1>
+        <h1>âŒ Erro no teste</h1>
         <pre>{str(e)}</pre>
         """, 500
 @app.route("/buscar")
@@ -576,9 +576,9 @@ def buscar():
             padding: 30px;
         ">
 
-            <h1>🔥 TOMA DESCONTO!</h1>
+            <h1>ðŸ”¥ TOMA DESCONTO!</h1>
 
-            <h2>🔎 Busca de produtos</h2>
+            <h2>ðŸ”Ž Busca de produtos</h2>
 
             <p>
                 Informe o produto que deseja pesquisar.
@@ -624,9 +624,9 @@ def buscar():
             padding: 30px;
         ">
 
-            <h1>🔥 TOMA DESCONTO!</h1>
+            <h1>ðŸ”¥ TOMA DESCONTO!</h1>
 
-            <h2>🔎 Resultado da busca</h2>
+            <h2>ðŸ”Ž Resultado da busca</h2>
 
             <p>
                 Produto pesquisado:
@@ -634,7 +634,7 @@ def buscar():
             </p>
 
             <p>
-                Anúncios encontrados:
+                AnÃºncios encontrados:
                 <strong>{len(resultados)}</strong>
             </p>
 
@@ -648,7 +648,7 @@ def buscar():
 
             titulo = produto_data.get(
                 "title",
-                "Sem título"
+                "Sem tÃ­tulo"
             )
 
             preco = produto_data.get(
@@ -685,23 +685,23 @@ def buscar():
                 </h3>
 
                 <p>
-                    🆔 ID:
+                    ðŸ†” ID:
                     <strong>{item_id}</strong>
                 </p>
 
                 <p>
-                    💰 Preço:
+                    ðŸ’° PreÃ§o:
                     <strong>{moeda} {preco}</strong>
                 </p>
 
                 <p>
-                    🔗
+                    ðŸ”—
                     <a
                         href="{link}"
                         target="_blank"
                         rel="noopener noreferrer"
                     >
-                        Ver anúncio
+                        Ver anÃºncio
                     </a>
                 </p>
 
@@ -727,7 +727,7 @@ def buscar():
             padding: 30px;
         ">
 
-            <h1>❌ Erro na busca</h1>
+            <h1>âŒ Erro na busca</h1>
 
             <pre>{e}</pre>
 
@@ -749,7 +749,7 @@ def status():
         if not tokens:
 
             return """
-            <h1>⚠️ Mercado Livre não conectado</h1>
+            <h1>âš ï¸ Mercado Livre nÃ£o conectado</h1>
 
             <p>
             Nenhum token foi encontrado no banco.
@@ -765,10 +765,10 @@ def status():
         if not access_token:
 
             return """
-            <h1>❌ Erro</h1>
+            <h1>âŒ Erro</h1>
 
             <p>
-            Não foi possível obter um Access Token válido.
+            NÃ£o foi possÃ­vel obter um Access Token vÃ¡lido.
             </p>
             """, 500
 
@@ -804,27 +804,27 @@ def status():
                 margin-top: 70px;
             ">
 
-                <h1>🔥 TOMA DESCONTO!</h1>
+                <h1>ðŸ”¥ TOMA DESCONTO!</h1>
 
-                <h2>🟢 Mercado Livre conectado</h2>
+                <h2>ðŸŸ¢ Mercado Livre conectado</h2>
 
-                <p>✅ Access Token válido</p>
+                <p>âœ… Access Token vÃ¡lido</p>
 
-                <p>✅ Banco de dados funcionando</p>
+                <p>âœ… Banco de dados funcionando</p>
 
-                <p>✅ Renovação automática configurada</p>
+                <p>âœ… RenovaÃ§Ã£o automÃ¡tica configurada</p>
 
                 <hr>
 
                 <p>
-                    👤 Usuário:
+                    ðŸ‘¤ UsuÃ¡rio:
                     <strong>
                         {dados.get("id")}
                     </strong>
                 </p>
 
                 <p>
-                    🏪 Apelido:
+                    ðŸª Apelido:
                     <strong>
                         {dados.get("nickname")}
                     </strong>
@@ -836,7 +836,7 @@ def status():
             """
 
         return f"""
-        <h1>⚠️ Token inválido</h1>
+        <h1>âš ï¸ Token invÃ¡lido</h1>
 
         <p>
         Mercado Livre respondeu:
@@ -848,14 +848,14 @@ def status():
     except Exception as e:
 
         return f"""
-        <h1>❌ Erro no sistema</h1>
+        <h1>âŒ Erro no sistema</h1>
 
         <pre>{str(e)}</pre>
         """, 500
 
 
 # ============================================================
-# INICIAR AUTORIZAÇÃO
+# INICIAR AUTORIZAÃ‡ÃƒO
 # ============================================================
 
 @app.route("/mercadolivre")
@@ -864,22 +864,22 @@ def mercadolivre():
     if not MELI_CLIENT_ID:
 
         return """
-        <h1>❌ Erro</h1>
-        <p>MELI_CLIENT_ID não configurado.</p>
+        <h1>âŒ Erro</h1>
+        <p>MELI_CLIENT_ID nÃ£o configurado.</p>
         """, 500
 
     if not MELI_CLIENT_SECRET:
 
         return """
-        <h1>❌ Erro</h1>
-        <p>MELI_CLIENT_SECRET não configurado.</p>
+        <h1>âŒ Erro</h1>
+        <p>MELI_CLIENT_SECRET nÃ£o configurado.</p>
         """, 500
 
     if not DATABASE_URL:
 
         return """
-        <h1>❌ Erro</h1>
-        <p>DATABASE_URL não configurada.</p>
+        <h1>âŒ Erro</h1>
+        <p>DATABASE_URL nÃ£o configurada.</p>
         """, 500
 
     # Criar state
@@ -954,7 +954,7 @@ def callback():
     if error:
 
         return f"""
-        <h1>❌ Autorização não concluída</h1>
+        <h1>âŒ AutorizaÃ§Ã£o nÃ£o concluÃ­da</h1>
 
         <p>Erro:</p>
 
@@ -976,24 +976,24 @@ def callback():
     if not code:
 
         return """
-        <h1>❌ Erro</h1>
+        <h1>âŒ Erro</h1>
 
         <p>
-        Código de autorização não recebido.
+        CÃ³digo de autorizaÃ§Ã£o nÃ£o recebido.
         </p>
         """, 400
 
     if not state_recebido or not state_salvo:
 
         return """
-        <h1>❌ Erro de segurança</h1>
+        <h1>âŒ Erro de seguranÃ§a</h1>
 
         <p>
-        State não encontrado.
+        State nÃ£o encontrado.
         </p>
 
         <p>
-        Comece novamente pelo botão
+        Comece novamente pelo botÃ£o
         Conectar Mercado Livre.
         </p>
         """, 400
@@ -1004,20 +1004,20 @@ def callback():
     ):
 
         return """
-        <h1>❌ Erro de segurança</h1>
+        <h1>âŒ Erro de seguranÃ§a</h1>
 
         <p>
-        O state não corresponde à autorização.
+        O state nÃ£o corresponde Ã  autorizaÃ§Ã£o.
         </p>
         """, 400
 
     if not code_verifier:
 
         return """
-        <h1>❌ Erro de segurança</h1>
+        <h1>âŒ Erro de seguranÃ§a</h1>
 
         <p>
-        Code verifier não encontrado.
+        Code verifier nÃ£o encontrado.
         </p>
         """, 400
 
@@ -1063,7 +1063,7 @@ def callback():
     if response.status_code != 200:
 
         return f"""
-        <h1>❌ Erro ao obter Access Token</h1>
+        <h1>âŒ Erro ao obter Access Token</h1>
 
         <p>
         Status:
@@ -1096,13 +1096,13 @@ def callback():
     if not access_token:
 
         return """
-        <h1>❌ Access Token não recebido</h1>
+        <h1>âŒ Access Token nÃ£o recebido</h1>
         """, 500
 
     if not refresh_token:
 
         return """
-        <h1>❌ Refresh Token não recebido</h1>
+        <h1>âŒ Refresh Token nÃ£o recebido</h1>
         """, 500
 
     # ========================================================
@@ -1125,7 +1125,7 @@ def callback():
     except Exception as e:
 
         return f"""
-        <h1>❌ Erro ao salvar tokens</h1>
+        <h1>âŒ Erro ao salvar tokens</h1>
 
         <pre>{str(e)}</pre>
         """, 500
@@ -1170,45 +1170,45 @@ def callback():
         ">
 
             <h1>
-                🎉 Mercado Livre conectado!
+                ðŸŽ‰ Mercado Livre conectado!
             </h1>
 
             <h2>
-                🔥 TOMA DESCONTO!
+                ðŸ”¥ TOMA DESCONTO!
             </h2>
 
             <p>
-                ✅ OAuth funcionando
+                âœ… OAuth funcionando
             </p>
 
             <p>
-                ✅ PKCE funcionando
+                âœ… PKCE funcionando
             </p>
 
             <p>
-                ✅ Access Token recebido
+                âœ… Access Token recebido
             </p>
 
             <p>
-                ✅ Refresh Token recebido
+                âœ… Refresh Token recebido
             </p>
 
             <p>
-                ✅ Tokens salvos no PostgreSQL
+                âœ… Tokens salvos no PostgreSQL
             </p>
 
             <p>
-                ✅ API funcionando
+                âœ… API funcionando
             </p>
 
             <hr>
 
             <h3>
-                🔄 Renovação automática ativada
+                ðŸ”„ RenovaÃ§Ã£o automÃ¡tica ativada
             </h3>
 
             <p>
-                O sistema poderá renovar o Access Token
+                O sistema poderÃ¡ renovar o Access Token
                 automaticamente.
             </p>
 
@@ -1216,7 +1216,7 @@ def callback():
 
             <a href="/status">
 
-                🔎 Ver status da conexão
+                ðŸ”Ž Ver status da conexÃ£o
 
             </a>
 
@@ -1237,7 +1237,7 @@ def callback():
         return resposta
 
     return f"""
-    <h1>⚠️ Token salvo</h1>
+    <h1>âš ï¸ Token salvo</h1>
 
     <p>
     Os tokens foram salvos,
@@ -1249,7 +1249,7 @@ def callback():
 
 
 # ============================================================
-# INICIALIZAÇÃO
+# INICIALIZAÃ‡ÃƒO
 # ============================================================
 
 try:
@@ -1269,7 +1269,7 @@ except Exception as e:
 
 
 # ============================================================
-# EXECUÇÃO
+# EXECUÃ‡ÃƒO
 # ============================================================
 
 if __name__ == "__main__":
@@ -1291,7 +1291,7 @@ def teste_endpoint():
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>Access Token não disponível</h1>", 500
+            return "<h1>Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -1337,7 +1337,7 @@ def teste_endpoint():
                 <strong>{usuario.status_code}</strong>
             </p>
 
-            <p>Usuário:
+            <p>UsuÃ¡rio:
                 <strong>{user_id}</strong>
             </p>
 
@@ -1365,7 +1365,7 @@ def teste_highlights():
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>Access Token não disponível</h1>", 500
+            return "<h1>Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -1389,7 +1389,7 @@ def teste_highlights():
         </head>
         <body style="font-family: Arial; padding: 30px;">
 
-            <h1>🔥 TESTE DE PRODUTOS MAIS VENDIDOS</h1>
+            <h1>ðŸ”¥ TESTE DE PRODUTOS MAIS VENDIDOS</h1>
 
             <h2>Status HTTP: {resposta.status_code}</h2>
 
@@ -1413,7 +1413,7 @@ def teste_produto():
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>Access Token não disponível</h1>", 500
+            return "<h1>Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -1437,7 +1437,7 @@ def teste_produto():
         </head>
         <body style="font-family: Arial; padding: 30px;">
 
-            <h1>🛒 TESTE DE PRODUTO</h1>
+            <h1>ðŸ›’ TESTE DE PRODUTO</h1>
 
             <h2>Status HTTP: {resposta.status_code}</h2>
 
@@ -1464,7 +1464,7 @@ def teste_product():
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>Access Token não disponível</h1>", 500
+            return "<h1>Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -1488,7 +1488,7 @@ def teste_product():
         </head>
         <body style="font-family: Arial; padding: 30px;">
 
-            <h1>🛒 TESTE DE PRODUTO DE CATÁLOGO</h1>
+            <h1>ðŸ›’ TESTE DE PRODUTO DE CATÃLOGO</h1>
 
             <h2>Status HTTP: {resposta.status_code}</h2>
 
@@ -1515,7 +1515,7 @@ def teste_buscar_product():
         access_token = obter_access_token()
 
         if not access_token:
-            return "<h1>Access Token não disponível</h1>", 500
+            return "<h1>Access Token nÃ£o disponÃ­vel</h1>", 500
 
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -1544,7 +1544,7 @@ def teste_buscar_product():
         </head>
         <body style="font-family: Arial; padding: 30px;">
 
-            <h1>🔎 BUSCA DO PRODUTO</h1>
+            <h1>ðŸ”Ž BUSCA DO PRODUTO</h1>
 
             <h2>Status HTTP: {resposta.status_code}</h2>
 
@@ -1565,3 +1565,85 @@ def teste_buscar_product():
         <pre>{str(e)}</pre>
         """, 500
 
+@app.route("/teste-user-product")
+def teste_user_product():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        # Busca produtos em destaque no Mercado Livre
+        resposta_highlights = requests.get(
+            "https://api.mercadolibre.com/highlights/MLB/category/MLB432825",
+            headers=headers,
+            timeout=30
+        )
+
+        if resposta_highlights.status_code != 200:
+            return f"""
+            <h1>Erro ao buscar highlights</h1>
+            <h2>Status: {resposta_highlights.status_code}</h2>
+            <pre>{resposta_highlights.text}</pre>
+            """, resposta_highlights.status_code
+
+        dados = resposta_highlights.json()
+
+        # Procura automaticamente um resultado USER_PRODUCT
+        user_product_id = None
+
+        for resultado in dados.get("content", []):
+            if resultado.get("type") == "USER_PRODUCT":
+                user_product_id = resultado.get("id")
+                break
+
+        if not user_product_id:
+            return """
+            <h1>USER_PRODUCT não encontrado</h1>
+            <p>O Mercado Livre não retornou nenhum USER_PRODUCT nesta categoria.</p>
+            <pre>{}</pre>
+            """.format(resposta_highlights.text), 404
+
+        # Consulta o USER_PRODUCT real
+        resposta_product = requests.get(
+            f"https://api.mercadolibre.com/user-products/{user_product_id}",
+            headers=headers,
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>User Product</title>
+        </head>
+        <body style="font-family: Arial; padding: 30px;">
+
+            <h1>🔥 USER PRODUCT REAL</h1>
+
+            <h2>Status Highlights: {resposta_highlights.status_code}</h2>
+
+            <h3>ID encontrado automaticamente:</h3>
+            <p><strong>{user_product_id}</strong></p>
+
+            <h2>Status User Product: {resposta_product.status_code}</h2>
+
+            <h3>Resposta do Mercado Livre:</h3>
+
+            <pre>{resposta_product.text}</pre>
+
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
