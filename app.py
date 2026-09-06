@@ -1647,3 +1647,60 @@ def teste_user_product():
         <h1>Erro no teste</h1>
         <pre>{str(e)}</pre>
         """, 500
+
+@app.route("/teste-itens-catalogo")
+def teste_itens_catalogo():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        catalog_product_id = "MLB74960151"
+
+        # Tenta localizar anúncios relacionados ao produto de catálogo
+        resposta = requests.get(
+            "https://api.mercadolibre.com/sites/MLB/search",
+            headers=headers,
+            params={
+                "catalog_product_id": catalog_product_id,
+                "limit": 20
+            },
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Itens do Catálogo</title>
+        </head>
+        <body style="font-family: Arial; padding: 30px;">
+
+            <h1>🛒 ANÚNCIOS DO PRODUTO</h1>
+
+            <h2>Status HTTP: {resposta.status_code}</h2>
+
+            <h3>Produto de catálogo:</h3>
+            <p><strong>{catalog_product_id}</strong></p>
+
+            <h3>Resposta do Mercado Livre:</h3>
+
+            <pre>{resposta.text}</pre>
+
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
+
