@@ -1285,3 +1285,77 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port
     )
+@app.route("/teste-endpoint")
+def teste_endpoint():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        usuario = requests.get(
+            "https://api.mercadolibre.com/users/me",
+            headers=headers,
+            timeout=30
+        )
+
+        if usuario.status_code != 200:
+            return f"""
+            <h1>Falha no /users/me</h1>
+            <h2>Status HTTP: {usuario.status_code}</h2>
+            <pre>{usuario.text}</pre>
+            """, 500
+
+        user_id = usuario.json().get("id")
+
+        url = f"https://api.mercadolibre.com/users/{user_id}/items/search"
+
+        resposta = requests.get(
+            url,
+            headers=headers,
+            params={"limit": 5},
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Teste de Endpoint</title>
+        </head>
+        <body style="font-family: Arial; padding: 30px;">
+
+            <h1>TESTE DE OUTRO ENDPOINT</h1>
+
+            <p>/users/me:
+                <strong>{usuario.status_code}</strong>
+            </p>
+
+            <p>Usuário:
+                <strong>{user_id}</strong>
+            </p>
+
+            <p>Status do novo endpoint:
+                <strong>{resposta.status_code}</strong>
+            </p>
+
+            <h3>Resposta:</h3>
+
+            <pre>{resposta.text}</pre>
+
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
+
