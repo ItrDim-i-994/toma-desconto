@@ -283,8 +283,7 @@ def buscar_produtos_mercado_livre(query, limit=20):
         "q": query,
         "limit": limit
     }
-
-   resposta = requests.get(
+resposta = requests.get(
     url,
     params=parametros,
     timeout=30
