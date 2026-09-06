@@ -3,6 +3,7 @@ import secrets
 import hashlib
 import base64
 import requests
+import psycopg2
 
 from flask import Flask, redirect, request, make_response
 
@@ -15,24 +16,266 @@ app = Flask(__name__)
 MELI_CLIENT_ID = os.getenv("MELI_CLIENT_ID")
 MELI_CLIENT_SECRET = os.getenv("MELI_CLIENT_SECRET")
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 REDIRECT_URI = "https://toma-desconto.onrender.com/callback"
+
+TOKEN_URL = "https://api.mercadolibre.com/oauth/token"
+
+# ============================================================
+# BANCO DE DADOS
+# ============================================================
+
+def conectar_banco():
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL não configurada.")
+
+    return psycopg2.connect(DATABASE_URL)
+
+
+def criar_tabela():
+
+    conn = conectar_banco()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS mercado_livre_tokens (
+            id INTEGER PRIMARY KEY,
+            user_id BIGINT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT NOT NULL,
+            expires_at BIGINT NOT NULL,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
 
 
 # ============================================================
-# FUNÇÕES PKCE
+# SALVAR TOKEN
+# ============================================================
+
+def salvar_tokens(
+    user_id,
+    access_token,
+    refresh_token,
+    expires_in
+):
+
+    import time
+
+    expires_at = int(time.time()) + int(expires_in)
+
+    conn = conectar_banco()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO mercado_livre_tokens
+        (
+            id,
+            user_id,
+            access_token,
+            refresh_token,
+            expires_at
+        )
+        VALUES
+        (
+            1,
+            %s,
+            %s,
+            %s,
+            %s
+        )
+
+        ON CONFLICT (id)
+
+        DO UPDATE SET
+            user_id = EXCLUDED.user_id,
+            access_token = EXCLUDED.access_token,
+            refresh_token = EXCLUDED.refresh_token,
+            expires_at = EXCLUDED.expires_at,
+            atualizado_em = CURRENT_TIMESTAMP;
+    """, (
+        user_id,
+        access_token,
+        refresh_token,
+        expires_at
+    ))
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+
+# ============================================================
+# RECUPERAR TOKEN
+# ============================================================
+
+def obter_tokens():
+
+    conn = conectar_banco()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            user_id,
+            access_token,
+            refresh_token,
+            expires_at
+        FROM mercado_livre_tokens
+        WHERE id = 1;
+    """)
+
+    resultado = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return resultado
+
+
+# ============================================================
+# RENOVAR TOKEN
+# ============================================================
+
+def renovar_access_token():
+
+    tokens = obter_tokens()
+
+    if not tokens:
+        return None
+
+    user_id = tokens[0]
+    refresh_token = tokens[2]
+
+    if not refresh_token:
+        return None
+
+    response = requests.post(
+
+        TOKEN_URL,
+
+        data={
+            "grant_type": "refresh_token",
+            "client_id": MELI_CLIENT_ID,
+            "client_secret": MELI_CLIENT_SECRET,
+            "refresh_token": refresh_token,
+        },
+
+        headers={
+            "accept": "application/json",
+            "content-type":
+                "application/x-www-form-urlencoded",
+        },
+
+        timeout=30,
+    )
+
+    if response.status_code != 200:
+
+        print(
+            "ERRO AO RENOVAR TOKEN:",
+            response.status_code,
+            response.text
+        )
+
+        return None
+
+    token_data = response.json()
+
+    novo_access_token = token_data.get(
+        "access_token"
+    )
+
+    novo_refresh_token = token_data.get(
+        "refresh_token"
+    )
+
+    novo_user_id = token_data.get(
+        "user_id",
+        user_id
+    )
+
+    expires_in = token_data.get(
+        "expires_in"
+    )
+
+    if not novo_access_token:
+        return None
+
+    if not novo_refresh_token:
+        print(
+            "ERRO: Mercado Livre não enviou novo refresh token."
+        )
+        return None
+
+    salvar_tokens(
+
+        novo_user_id,
+
+        novo_access_token,
+
+        novo_refresh_token,
+
+        expires_in
+    )
+
+    print(
+        "TOKEN RENOVADO COM SUCESSO."
+    )
+
+    return novo_access_token
+
+
+# ============================================================
+# OBTER ACCESS TOKEN VÁLIDO
+# ============================================================
+
+def obter_access_token():
+
+    tokens = obter_tokens()
+
+    if not tokens:
+        return None
+
+    access_token = tokens[1]
+    expires_at = tokens[3]
+
+    import time
+
+    agora = int(time.time())
+
+    # Renovar quando faltar menos de 5 minutos
+    if agora >= expires_at - 300:
+
+        print(
+            "Access Token próximo do vencimento."
+        )
+
+        return renovar_access_token()
+
+    return access_token
+
+
+# ============================================================
+# PKCE
 # ============================================================
 
 def gerar_code_verifier():
-    """
-    Gera o código secreto usado pelo PKCE.
-    """
+
     return secrets.token_urlsafe(64)
 
 
 def gerar_code_challenge(code_verifier):
-    """
-    Gera o code_challenge a partir do code_verifier.
-    """
 
     digest = hashlib.sha256(
         code_verifier.encode("utf-8")
@@ -44,7 +287,7 @@ def gerar_code_challenge(code_verifier):
 
 
 # ============================================================
-# PÁGINA INICIAL
+# HOME
 # ============================================================
 
 @app.route("/")
@@ -57,6 +300,7 @@ def home():
 
     <head>
         <meta charset="UTF-8">
+
         <title>TOMA DESCONTO!</title>
     </head>
 
@@ -69,7 +313,7 @@ def home():
 
         <h1>🔥 TOMA DESCONTO!</h1>
 
-        <h2>Conexão com Mercado Livre</h2>
+        <h2>🤖 Sistema de Ofertas</h2>
 
         <p>Servidor online.</p>
 
@@ -89,6 +333,22 @@ def home():
 
         </a>
 
+        <br><br>
+
+        <a href="/status">
+
+            <button style="
+                font-size: 16px;
+                padding: 10px 20px;
+                cursor: pointer;
+            ">
+
+                🔎 Ver status
+
+            </button>
+
+        </a>
+
     </body>
 
     </html>
@@ -96,85 +356,190 @@ def home():
 
 
 # ============================================================
-# INICIAR OAUTH
+# STATUS
+# ============================================================
+
+@app.route("/status")
+def status():
+
+    try:
+
+        tokens = obter_tokens()
+
+        if not tokens:
+
+            return """
+            <h1>⚠️ Mercado Livre não conectado</h1>
+
+            <p>
+            Nenhum token foi encontrado no banco.
+            </p>
+
+            <a href="/mercadolivre">
+            Conectar Mercado Livre
+            </a>
+            """
+
+        access_token = obter_access_token()
+
+        if not access_token:
+
+            return """
+            <h1>❌ Erro</h1>
+
+            <p>
+            Não foi possível obter um Access Token válido.
+            </p>
+            """, 500
+
+        api_response = requests.get(
+
+            "https://api.mercadolibre.com/users/me",
+
+            headers={
+                "Authorization":
+                    f"Bearer {access_token}"
+            },
+
+            timeout=30,
+        )
+
+        if api_response.status_code == 200:
+
+            dados = api_response.json()
+
+            return f"""
+            <!DOCTYPE html>
+
+            <html>
+
+            <head>
+                <meta charset="UTF-8">
+                <title>TOMA DESCONTO</title>
+            </head>
+
+            <body style="
+                font-family: Arial;
+                text-align: center;
+                margin-top: 70px;
+            ">
+
+                <h1>🔥 TOMA DESCONTO!</h1>
+
+                <h2>🟢 Mercado Livre conectado</h2>
+
+                <p>✅ Access Token válido</p>
+
+                <p>✅ Banco de dados funcionando</p>
+
+                <p>✅ Renovação automática configurada</p>
+
+                <hr>
+
+                <p>
+                    👤 Usuário:
+                    <strong>
+                        {dados.get("id")}
+                    </strong>
+                </p>
+
+                <p>
+                    🏪 Apelido:
+                    <strong>
+                        {dados.get("nickname")}
+                    </strong>
+                </p>
+
+            </body>
+
+            </html>
+            """
+
+        return f"""
+        <h1>⚠️ Token inválido</h1>
+
+        <p>
+        Mercado Livre respondeu:
+        </p>
+
+        <pre>{api_response.text}</pre>
+        """, 500
+
+    except Exception as e:
+
+        return f"""
+        <h1>❌ Erro no sistema</h1>
+
+        <pre>{str(e)}</pre>
+        """, 500
+
+
+# ============================================================
+# INICIAR AUTORIZAÇÃO
 # ============================================================
 
 @app.route("/mercadolivre")
 def mercadolivre():
 
-    # --------------------------------------------------------
-    # Verificar Client ID
-    # --------------------------------------------------------
-
     if not MELI_CLIENT_ID:
 
         return """
         <h1>❌ Erro</h1>
-
-        <p>
-        MELI_CLIENT_ID não está configurado no Render.
-        </p>
+        <p>MELI_CLIENT_ID não configurado.</p>
         """, 500
-
-    # --------------------------------------------------------
-    # Verificar Client Secret
-    # --------------------------------------------------------
 
     if not MELI_CLIENT_SECRET:
 
         return """
         <h1>❌ Erro</h1>
-
-        <p>
-        MELI_CLIENT_SECRET não está configurado no Render.
-        </p>
+        <p>MELI_CLIENT_SECRET não configurado.</p>
         """, 500
 
-    # --------------------------------------------------------
-    # GERAR STATE
-    # --------------------------------------------------------
+    if not DATABASE_URL:
+
+        return """
+        <h1>❌ Erro</h1>
+        <p>DATABASE_URL não configurada.</p>
+        """, 500
+
+    # Criar state
 
     state = secrets.token_urlsafe(32)
 
-    # --------------------------------------------------------
-    # GERAR CODE VERIFIER
-    # --------------------------------------------------------
+    # Criar verifier
 
     code_verifier = gerar_code_verifier()
 
-    # --------------------------------------------------------
-    # GERAR CODE CHALLENGE
-    # --------------------------------------------------------
+    # Criar challenge
 
     code_challenge = gerar_code_challenge(
         code_verifier
     )
 
-    # --------------------------------------------------------
-    # URL DO MERCADO LIVRE
-    # --------------------------------------------------------
+    # URL do Mercado Livre
 
     authorization_url = (
+
         "https://auth.mercadolivre.com.br/authorization"
+
         "?response_type=code"
+
         f"&client_id={MELI_CLIENT_ID}"
+
         f"&redirect_uri={REDIRECT_URI}"
+
         f"&state={state}"
+
         f"&code_challenge={code_challenge}"
+
         "&code_challenge_method=S256"
     )
-
-    # --------------------------------------------------------
-    # Criar resposta
-    # --------------------------------------------------------
 
     response = make_response(
         redirect(authorization_url)
     )
 
-    # --------------------------------------------------------
-    # Guardar os dados do PKCE em cookie
-    # --------------------------------------------------------
+    # Guardar temporariamente no navegador
 
     response.set_cookie(
         "oauth_state",
@@ -198,52 +563,35 @@ def mercadolivre():
 
 
 # ============================================================
-# CALLBACK DO MERCADO LIVRE
+# CALLBACK
 # ============================================================
 
 @app.route("/callback")
 def callback():
-
-    # --------------------------------------------------------
-    # Verificar erro
-    # --------------------------------------------------------
 
     error = request.args.get("error")
 
     if error:
 
         return f"""
-        <!DOCTYPE html>
+        <h1>❌ Autorização não concluída</h1>
 
-        <html>
+        <p>Erro:</p>
 
-        <head>
-            <meta charset="UTF-8">
-            <title>TOMA DESCONTO</title>
-        </head>
-
-        <body style="
-            font-family: Arial;
-            text-align: center;
-            margin-top: 80px;
-        ">
-
-            <h1>❌ Autorização não concluída</h1>
-
-            <p>Erro retornado pelo Mercado Livre:</p>
-
-            <pre>{error}</pre>
-
-        </body>
-
-        </html>
+        <pre>{error}</pre>
         """, 400
 
-    # --------------------------------------------------------
-    # Recuperar CODE
-    # --------------------------------------------------------
-
     code = request.args.get("code")
+
+    state_recebido = request.args.get("state")
+
+    state_salvo = request.cookies.get(
+        "oauth_state"
+    )
+
+    code_verifier = request.cookies.get(
+        "oauth_code_verifier"
+    )
 
     if not code:
 
@@ -251,48 +599,22 @@ def callback():
         <h1>❌ Erro</h1>
 
         <p>
-        O Mercado Livre não enviou o código de autorização.
+        Código de autorização não recebido.
         </p>
         """, 400
 
-    # --------------------------------------------------------
-    # Recuperar STATE enviado pelo Mercado Livre
-    # --------------------------------------------------------
-
-    state_recebido = request.args.get("state")
-
-    # --------------------------------------------------------
-    # Recuperar STATE salvo no navegador
-    # --------------------------------------------------------
-
-    state_salvo = request.cookies.get("oauth_state")
-
-    # --------------------------------------------------------
-    # Validar STATE
-    # --------------------------------------------------------
-
-    if not state_recebido:
+    if not state_recebido or not state_salvo:
 
         return """
         <h1>❌ Erro de segurança</h1>
 
         <p>
-        O Mercado Livre não enviou o parâmetro state.
-        </p>
-        """, 400
-
-    if not state_salvo:
-
-        return """
-        <h1>❌ Erro de segurança</h1>
-
-        <p>
-        O navegador não possui o state da autorização.
+        State não encontrado.
         </p>
 
         <p>
         Comece novamente pelo botão
-        <strong>Conectar Mercado Livre</strong>.
+        Conectar Mercado Livre.
         </p>
         """, 400
 
@@ -305,22 +627,9 @@ def callback():
         <h1>❌ Erro de segurança</h1>
 
         <p>
-        O parâmetro state não corresponde à autorização iniciada.
-        </p>
-
-        <p>
-        Comece novamente pelo botão
-        <strong>Conectar Mercado Livre</strong>.
+        O state não corresponde à autorização.
         </p>
         """, 400
-
-    # --------------------------------------------------------
-    # Recuperar CODE VERIFIER
-    # --------------------------------------------------------
-
-    code_verifier = request.cookies.get(
-        "oauth_code_verifier"
-    )
 
     if not code_verifier:
 
@@ -328,28 +637,9 @@ def callback():
         <h1>❌ Erro de segurança</h1>
 
         <p>
-        O code_verifier do PKCE não foi encontrado.
-        </p>
-
-        <p>
-        Comece novamente pelo botão
-        <strong>Conectar Mercado Livre</strong>.
+        Code verifier não encontrado.
         </p>
         """, 400
-
-    # --------------------------------------------------------
-    # Verificar Client Secret
-    # --------------------------------------------------------
-
-    if not MELI_CLIENT_SECRET:
-
-        return """
-        <h1>❌ Erro</h1>
-
-        <p>
-        MELI_CLIENT_SECRET não está configurado no Render.
-        </p>
-        """, 500
 
     # ========================================================
     # TROCAR CODE POR TOKEN
@@ -357,7 +647,7 @@ def callback():
 
     response = requests.post(
 
-        "https://api.mercadolibre.com/oauth/token",
+        TOKEN_URL,
 
         data={
 
@@ -382,6 +672,7 @@ def callback():
 
         headers={
             "accept": "application/json",
+
             "content-type":
                 "application/x-www-form-urlencoded",
         },
@@ -389,47 +680,20 @@ def callback():
         timeout=30,
     )
 
-    # ========================================================
-    # ERRO AO PEGAR TOKEN
-    # ========================================================
-
     if response.status_code != 200:
 
         return f"""
-        <!DOCTYPE html>
+        <h1>❌ Erro ao obter Access Token</h1>
 
-        <html>
+        <p>
+        Status:
+        <strong>
+        {response.status_code}
+        </strong>
+        </p>
 
-        <head>
-            <meta charset="UTF-8">
-            <title>TOMA DESCONTO</title>
-        </head>
-
-        <body style="
-            font-family: Arial;
-            text-align: center;
-            margin-top: 70px;
-        ">
-
-            <h1>❌ Erro ao obter Access Token</h1>
-
-            <p>
-                <strong>Status:</strong>
-                {response.status_code}
-            </p>
-
-            <pre>
-{response.text}
-            </pre>
-
-        </body>
-
-        </html>
+        <pre>{response.text}</pre>
         """, 500
-
-    # ========================================================
-    # TOKEN RECEBIDO
-    # ========================================================
 
     token_data = response.json()
 
@@ -449,19 +713,41 @@ def callback():
         "expires_in"
     )
 
-    # --------------------------------------------------------
-    # Verificar Access Token
-    # --------------------------------------------------------
-
     if not access_token:
 
         return """
-        <h1>❌ Erro</h1>
+        <h1>❌ Access Token não recebido</h1>
+        """, 500
 
-        <p>
-        O Mercado Livre respondeu,
-        mas não enviou Access Token.
-        </p>
+    if not refresh_token:
+
+        return """
+        <h1>❌ Refresh Token não recebido</h1>
+        """, 500
+
+    # ========================================================
+    # SALVAR NO POSTGRESQL
+    # ========================================================
+
+    try:
+
+        salvar_tokens(
+
+            user_id,
+
+            access_token,
+
+            refresh_token,
+
+            expires_in
+        )
+
+    except Exception as e:
+
+        return f"""
+        <h1>❌ Erro ao salvar tokens</h1>
+
+        <pre>{str(e)}</pre>
         """, 500
 
     # ========================================================
@@ -480,100 +766,85 @@ def callback():
         timeout=30,
     )
 
-    # ========================================================
-    # API FUNCIONOU
-    # ========================================================
-
     if api_response.status_code == 200:
 
-        # ----------------------------------------------------
-        # Limpar cookies
-        # ----------------------------------------------------
+        resposta = make_response("""
 
-        resposta = make_response(
-            f"""
-            <!DOCTYPE html>
+        <!DOCTYPE html>
 
-            <html>
+        <html>
 
-            <head>
-                <meta charset="UTF-8">
+        <head>
+            <meta charset="UTF-8">
 
-                <title>
-                    TOMA DESCONTO - Mercado Livre
-                </title>
-            </head>
+            <title>
+                TOMA DESCONTO
+            </title>
+        </head>
 
-            <body style="
-                font-family: Arial;
-                text-align: center;
-                margin-top: 60px;
-                background: #f5f5f5;
-            ">
+        <body style="
+            font-family: Arial;
+            text-align: center;
+            margin-top: 60px;
+            background: #f5f5f5;
+        ">
 
-                <h1>
-                    🎉 Mercado Livre conectado!
-                </h1>
+            <h1>
+                🎉 Mercado Livre conectado!
+            </h1>
 
-                <h2>
-                    🔥 TOMA DESCONTO!
-                </h2>
+            <h2>
+                🔥 TOMA DESCONTO!
+            </h2>
 
-                <p>
-                    ✅ OAuth funcionando
-                </p>
+            <p>
+                ✅ OAuth funcionando
+            </p>
 
-                <p>
-                    ✅ PKCE funcionando
-                </p>
+            <p>
+                ✅ PKCE funcionando
+            </p>
 
-                <p>
-                    ✅ Access Token recebido
-                </p>
+            <p>
+                ✅ Access Token recebido
+            </p>
 
-                <p>
-                    ✅ Refresh Token recebido
-                </p>
+            <p>
+                ✅ Refresh Token recebido
+            </p>
 
-                <p>
-                    ✅ API do Mercado Livre respondeu corretamente
-                </p>
+            <p>
+                ✅ Tokens salvos no PostgreSQL
+            </p>
 
-                <hr style="max-width:500px;">
+            <p>
+                ✅ API funcionando
+            </p>
 
-                <p>
-                    👤
-                    <strong>Usuário autorizado:</strong>
-                    {user_id}
-                </p>
+            <hr>
 
-                <p>
-                    ⏱️
-                    <strong>Token válido por:</strong>
-                    {expires_in} segundos
-                </p>
+            <h3>
+                🔄 Renovação automática ativada
+            </h3>
 
-                <br>
+            <p>
+                O sistema poderá renovar o Access Token
+                automaticamente.
+            </p>
 
-                <h3>
-                    🚀 CONEXÃO CONCLUÍDA!
-                </h3>
+            <br>
 
-                <p>
-                    O TOMA DESCONTO conseguiu
-                    conversar com a API do Mercado Livre.
-                </p>
+            <a href="/status">
 
-                <p>
-                    🔎 Agora podemos partir para
-                    a busca automática de produtos.
-                </p>
+                🔎 Ver status da conexão
 
-            </body>
+            </a>
 
-            </html>
-            """
-        )
+        </body>
+
+        </html>
+
+        """)
 
         resposta.delete_cookie(
             "oauth_state"
@@ -585,48 +856,36 @@ def callback():
 
         return resposta
 
-    # ========================================================
-    # TOKEN RECEBIDO MAS API FALHOU
-    # ========================================================
-
     return f"""
-    <!DOCTYPE html>
+    <h1>⚠️ Token salvo</h1>
 
-    <html>
+    <p>
+    Os tokens foram salvos,
+    mas o teste da API falhou.
+    </p>
 
-    <head>
-        <meta charset="UTF-8">
-        <title>TOMA DESCONTO</title>
-    </head>
-
-    <body style="
-        font-family: Arial;
-        text-align: center;
-        margin-top: 60px;
-    ">
-
-        <h1>⚠️ Token recebido</h1>
-
-        <p>
-            O OAuth funcionou.
-        </p>
-
-        <p>
-            Porém, o teste da API retornou:
-        </p>
-
-        <h2>
-            HTTP {api_response.status_code}
-        </h2>
-
-        <pre>
-{api_response.text}
-        </pre>
-
-    </body>
-
-    </html>
+    <pre>{api_response.text}</pre>
     """, 500
+
+
+# ============================================================
+# INICIALIZAÇÃO
+# ============================================================
+
+try:
+
+    criar_tabela()
+
+    print(
+        "Banco de dados inicializado."
+    )
+
+except Exception as e:
+
+    print(
+        "Erro ao inicializar banco:",
+        e
+    )
 
 
 # ============================================================
