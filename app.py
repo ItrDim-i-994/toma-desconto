@@ -1509,3 +1509,59 @@ def teste_product():
         <pre>{str(e)}</pre>
         """, 500
 
+@app.route("/teste-buscar-product")
+def teste_buscar_product():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        product_id = "MLB74960151"
+
+        resposta = requests.get(
+            "https://api.mercadolibre.com/products/search",
+            headers=headers,
+            params={
+                "status": "active",
+                "site_id": "MLB",
+                "q": product_id
+            },
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Buscar Product</title>
+        </head>
+        <body style="font-family: Arial; padding: 30px;">
+
+            <h1>🔎 BUSCA DO PRODUTO</h1>
+
+            <h2>Status HTTP: {resposta.status_code}</h2>
+
+            <h3>Product ID pesquisado:</h3>
+            <p>{product_id}</p>
+
+            <h3>Resposta do Mercado Livre:</h3>
+
+            <pre>{resposta.text}</pre>
+
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
+
