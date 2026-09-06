@@ -1407,3 +1407,54 @@ def teste_highlights():
         <pre>{str(e)}</pre>
         """, 500
 
+@app.route("/teste-produto")
+def teste_produto():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        item_id = "MLB74960151"
+
+        resposta = requests.get(
+            f"https://api.mercadolibre.com/items/{item_id}",
+            headers=headers,
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Teste Produto</title>
+        </head>
+        <body style="font-family: Arial; padding: 30px;">
+
+            <h1>🛒 TESTE DE PRODUTO</h1>
+
+            <h2>Status HTTP: {resposta.status_code}</h2>
+
+            <h3>ID:</h3>
+            <p>{item_id}</p>
+
+            <h3>Resposta do Mercado Livre:</h3>
+
+            <pre>{resposta.text}</pre>
+
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
+
