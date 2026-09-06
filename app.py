@@ -484,6 +484,32 @@ def home():
 # BUSCAR PRODUTOS
 # ============================================================
 
+@app.route("/teste-token")
+def teste_token():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>❌ Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        resposta = requests.get(
+            "https://api.mercadolibre.com/users/me",
+            headers=headers,
+            timeout=30
+        )
+
+        return f"""
+        <h1>🔎 TESTE DO ACCESS TOKEN</h1>
+        <h2>Status HTTP: {resposta.status_code}</h2>
+        <pre>{resposta.text}</pre>
+        """
+
+    except Exception as e:
+        return f"<h1>❌ Erro</h1><pre>{str(e)}</pre>", 500
 @app.route("/buscar")
 def buscar():
 
