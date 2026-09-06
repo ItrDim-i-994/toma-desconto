@@ -510,6 +510,43 @@ def teste_token():
 
     except Exception as e:
         return f"<h1>❌ Erro</h1><pre>{str(e)}</pre>", 500
+@app.route("/teste-busca")
+def teste_busca():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>❌ Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        resposta = requests.get(
+            "https://api.mercadolibre.com/sites/MLB/search",
+            params={
+                "q": "air fryer",
+                "limit": 5
+            },
+            headers=headers,
+            timeout=30
+        )
+
+        return f"""
+        <h1>🔎 TESTE DE BUSCA</h1>
+
+        <h2>Status HTTP: {resposta.status_code}</h2>
+
+        <h3>Resposta do Mercado Livre:</h3>
+
+        <pre>{resposta.text}</pre>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>❌ Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
 @app.route("/buscar")
 def buscar():
 
