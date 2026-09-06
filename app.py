@@ -388,7 +388,190 @@ def home():
     </html>
     """
 
+# ============================================================
+# BUSCAR PRODUTOS
+# ============================================================
 
+@app.route("/buscar")
+def buscar():
+
+    produto = request.args.get("produto", "").strip()
+
+    if not produto:
+        return """
+        <!DOCTYPE html>
+        <html>
+
+        <head>
+            <meta charset="UTF-8">
+            <title>TOMA DESCONTO!</title>
+        </head>
+
+        <body style="
+            font-family: Arial;
+            background: #f5f5f5;
+            padding: 30px;
+        ">
+
+            <h1>🔥 TOMA DESCONTO!</h1>
+
+            <h2>🔎 Busca de produtos</h2>
+
+            <p>
+                Informe o produto que deseja pesquisar.
+            </p>
+
+            <p>
+                Exemplo:
+            </p>
+
+            <code>
+                /buscar?produto=air%20fryer
+            </code>
+
+        </body>
+
+        </html>
+        """
+
+    try:
+
+        dados = buscar_produtos_mercado_livre(
+            produto,
+            limit=20
+        )
+
+        resultados = dados.get(
+            "results",
+            []
+        )
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+
+        <head>
+            <meta charset="UTF-8">
+            <title>TOMA DESCONTO!</title>
+        </head>
+
+        <body style="
+            font-family: Arial;
+            background: #f5f5f5;
+            padding: 30px;
+        ">
+
+            <h1>🔥 TOMA DESCONTO!</h1>
+
+            <h2>🔎 Resultado da busca</h2>
+
+            <p>
+                Produto pesquisado:
+                <strong>{produto}</strong>
+            </p>
+
+            <p>
+                Anúncios encontrados:
+                <strong>{len(resultados)}</strong>
+            </p>
+
+            <hr>
+        """
+
+        for i, produto_data in enumerate(
+            resultados,
+            start=1
+        ):
+
+            titulo = produto_data.get(
+                "title",
+                "Sem título"
+            )
+
+            preco = produto_data.get(
+                "price",
+                0
+            )
+
+            moeda = produto_data.get(
+                "currency_id",
+                "BRL"
+            )
+
+            link = produto_data.get(
+                "permalink",
+                "#"
+            )
+
+            item_id = produto_data.get(
+                "id",
+                ""
+            )
+
+            html += f"""
+            <div style="
+                background: white;
+                padding: 20px;
+                margin: 15px 0;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            ">
+
+                <h3>
+                    {i}. {titulo}
+                </h3>
+
+                <p>
+                    🆔 ID:
+                    <strong>{item_id}</strong>
+                </p>
+
+                <p>
+                    💰 Preço:
+                    <strong>{moeda} {preco}</strong>
+                </p>
+
+                <p>
+                    🔗
+                    <a
+                        href="{link}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Ver anúncio
+                    </a>
+                </p>
+
+            </div>
+            """
+
+        html += """
+        </body>
+        </html>
+        """
+
+        return html
+
+    except Exception as e:
+
+        return f"""
+        <!DOCTYPE html>
+
+        <html>
+
+        <body style="
+            font-family: Arial;
+            padding: 30px;
+        ">
+
+            <h1>❌ Erro na busca</h1>
+
+            <pre>{e}</pre>
+
+        </body>
+
+        </html>
+        """, 500
 # ============================================================
 # STATUS
 # ============================================================
