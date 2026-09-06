@@ -267,6 +267,40 @@ def obter_access_token():
 
 
 # ============================================================
+# BUSCAR PRODUTOS NO MERCADO LIVRE
+# ============================================================
+
+def buscar_produtos_mercado_livre(query, limit=20):
+
+    access_token = obter_access_token()
+
+    if not access_token:
+        raise Exception("Não foi possível obter um Access Token válido.")
+
+    url = "https://api.mercadolibre.com/sites/MLB/search"
+
+    parametros = {
+        "q": query,
+        "limit": limit
+    }
+
+    resposta = requests.get(
+        url,
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        },
+        params=parametros,
+        timeout=30
+    )
+
+    if resposta.status_code != 200:
+        raise Exception(
+            f"Erro na busca do Mercado Livre: "
+            f"{resposta.status_code} - {resposta.text}"
+        )
+
+    return resposta.json()
+# ============================================================
 # PKCE
 # ============================================================
 
