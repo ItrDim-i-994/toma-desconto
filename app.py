@@ -284,14 +284,11 @@ def buscar_produtos_mercado_livre(query, limit=20):
         "limit": limit
     }
 
-    resposta = requests.get(
-        url,
-        headers={
-            "Authorization": f"Bearer {access_token}"
-        },
-        params=parametros,
-        timeout=30
-    )
+   resposta = requests.get(
+    url,
+    params=parametros,
+    timeout=30
+)
 
     if resposta.status_code != 200:
         raise Exception(
