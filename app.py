@@ -283,13 +283,12 @@ def buscar_produtos_mercado_livre(query, limit=20):
         "q": query,
         "limit": limit
     }
-       resposta = requests.get(
+
+    resposta = requests.get(
         url,
         params=parametros,
         timeout=30
     )
-    )
-)
 
     if resposta.status_code != 200:
         raise Exception(
@@ -298,25 +297,6 @@ def buscar_produtos_mercado_livre(query, limit=20):
         )
 
     return resposta.json()
-# ============================================================
-# PKCE
-# ============================================================
-
-def gerar_code_verifier():
-
-    return secrets.token_urlsafe(64)
-
-
-def gerar_code_challenge(code_verifier):
-
-    digest = hashlib.sha256(
-        code_verifier.encode("utf-8")
-    ).digest()
-
-    return base64.urlsafe_b64encode(
-        digest
-    ).decode("utf-8").rstrip("=")
-
 
 # ============================================================
 # HOME
