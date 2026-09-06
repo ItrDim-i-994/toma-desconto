@@ -1359,3 +1359,51 @@ def teste_endpoint():
         <pre>{str(e)}</pre>
         """, 500
 
+@app.route("/teste-highlights")
+def teste_highlights():
+    try:
+        access_token = obter_access_token()
+
+        if not access_token:
+            return "<h1>Access Token não disponível</h1>", 500
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+
+        url = "https://api.mercadolibre.com/highlights/MLB/category/MLB432825"
+
+        resposta = requests.get(
+            url,
+            headers=headers,
+            timeout=30
+        )
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Teste Highlights</title>
+        </head>
+        <body style="font-family: Arial; padding: 30px;">
+
+            <h1>🔥 TESTE DE PRODUTOS MAIS VENDIDOS</h1>
+
+            <h2>Status HTTP: {resposta.status_code}</h2>
+
+            <h3>Resposta do Mercado Livre:</h3>
+
+            <pre>{resposta.text}</pre>
+
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        return f"""
+        <h1>Erro no teste</h1>
+        <pre>{str(e)}</pre>
+        """, 500
+
